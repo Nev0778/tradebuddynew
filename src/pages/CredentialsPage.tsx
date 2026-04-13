@@ -124,6 +124,157 @@ function Section({ icon, title, subtitle, connected, children, docsUrl, docsLabe
   );
 }
 
+// ─── WhatsApp Setup Guide ─────────────────────────────────────────────────────
+
+const WA_STEPS = [
+  {
+    num: 1,
+    title: 'Create a Facebook Business Manager account',
+    detail: 'Go to business.facebook.com and create a free Business Manager account if you don\'t already have one. This is required by Meta to access the WhatsApp Cloud API.',
+    link: 'https://business.facebook.com',
+    linkLabel: 'business.facebook.com',
+  },
+  {
+    num: 2,
+    title: 'Get a dedicated phone number',
+    detail: 'You need a phone number that is NOT already registered to a personal WhatsApp or WhatsApp Business App account. A new SIM card or a VoIP number (e.g. from Vonage or Twilio) works well. You\'ll receive a verification code on this number.',
+    link: null,
+    linkLabel: null,
+  },
+  {
+    num: 3,
+    title: 'Create a Meta Developer App',
+    detail: 'Go to developers.facebook.com, click "Create App", choose "Business" as the type, and add the WhatsApp product to your app.',
+    link: 'https://developers.facebook.com/apps/create/',
+    linkLabel: 'Create a Meta App',
+  },
+  {
+    num: 4,
+    title: 'Add a WhatsApp Business Account (WABA)',
+    detail: 'Inside your Meta App, go to WhatsApp → Getting Started. Follow the prompts to create or connect a WhatsApp Business Account and add your phone number. Meta will send a verification code to your number.',
+    link: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
+    linkLabel: 'WhatsApp Cloud API: Get Started',
+  },
+  {
+    num: 5,
+    title: 'Generate a System User Access Token',
+    detail: 'In Business Manager, go to Settings → System Users. Create a System User, assign it "Admin" access to your WhatsApp Business Account, then generate a token with the whatsapp_business_messaging and whatsapp_business_management permissions. This is your Access Token.',
+    link: 'https://business.facebook.com/settings/system-users',
+    linkLabel: 'Business Manager: System Users',
+  },
+  {
+    num: 6,
+    title: 'Set up a webhook',
+    detail: 'TradeBuddy needs a public webhook URL to receive incoming WhatsApp messages. This is the backend integration step — once TradeBuddy\'s server is deployed, you\'ll paste its webhook URL into your Meta App under WhatsApp → Configuration. Choose a Webhook Verify Token (any secret string you invent) and enter it here too.',
+    link: 'https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks',
+    linkLabel: 'Setting up Webhooks',
+  },
+  {
+    num: 7,
+    title: 'Enter your credentials below and save',
+    detail: 'Copy your Phone Number ID, Access Token, Webhook Verify Token, and Business Account ID from the Meta Developer dashboard and paste them into the fields below.',
+    link: null,
+    linkLabel: null,
+  },
+];
+
+function WhatsAppSetupGuide() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{
+      marginBottom: 18,
+      borderRadius: 12,
+      border: '1px solid rgba(37,211,102,0.2)',
+      background: 'rgba(37,211,102,0.04)',
+      overflow: 'hidden',
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '11px 14px', textAlign: 'left', gap: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 16 }}>📋</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#25D366' }}>
+            Step-by-step setup guide
+          </span>
+        </div>
+        <span style={{ color: 'var(--slate)', fontSize: 13, flexShrink: 0 }}>
+          {open ? 'Hide ▲' : 'Show ▼'}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 14px 14px', borderTop: '1px solid rgba(37,211,102,0.15)' }}>
+          {/* Important notice */}
+          <div style={{
+            marginTop: 12, marginBottom: 14, padding: '10px 12px', borderRadius: 10,
+            background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
+          }}>
+            <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
+              <strong style={{ color: 'var(--amber)' }}>Important:</strong> Standard (personal) WhatsApp cannot be connected via an API — Meta only allows the WhatsApp Cloud API for business use.
+              The first 1,000 customer-initiated conversations per month are <strong style={{ color: 'var(--white)' }}>free</strong>.
+            </p>
+          </div>
+
+          {/* Steps */}
+          {WA_STEPS.map(step => (
+            <div key={step.num} style={{
+              display: 'flex', gap: 12, marginBottom: 14,
+              paddingBottom: 14,
+              borderBottom: step.num < WA_STEPS.length ? '1px solid rgba(255,255,255,0.05)' : 'none',
+            }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700, color: '#25D366', marginTop: 1,
+              }}>{step.num}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--white)', marginBottom: 4 }}>
+                  {step.title}
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--slate)', lineHeight: 1.6 }}>
+                  {step.detail}
+                </p>
+                {step.link && (
+                  <a
+                    href={step.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 12, color: '#25D366', marginTop: 5,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    🔗 {step.linkLabel} ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Cost note */}
+          <div style={{
+            padding: '10px 12px', borderRadius: 10,
+            background: 'rgba(37,211,102,0.06)', border: '1px solid rgba(37,211,102,0.15)',
+          }}>
+            <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
+              <strong style={{ color: '#25D366' }}>Pricing:</strong> Meta charges per conversation (24-hour window), not per message.
+              Business-initiated conversations cost approx. £0.04–£0.07 each.
+              Customer-initiated conversations are free for the first 1,000/month, then approx. £0.02–£0.04 each.
+              For most sole-trader tradespeople, the monthly cost is under £5.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function CredentialsPage() {
@@ -216,21 +367,23 @@ export function CredentialsPage() {
         <Section
           icon="💬"
           title="WhatsApp Business"
-          subtitle="WhatsApp Business API (Meta Cloud)"
+          subtitle="WhatsApp Cloud API (Meta) — requires a dedicated number"
           connected={isConnected(wa)}
           docsUrl="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
           docsLabel="WhatsApp Cloud API Docs"
         >
+          <WhatsAppSetupGuide />
+
           <Field
             label="PHONE NUMBER ID"
-            hint="The numeric ID of your WhatsApp Business phone number. Found in Meta Business Suite → WhatsApp → Phone Numbers."
+            hint="The numeric ID of your WhatsApp Business phone number. Found in Meta Developer App → WhatsApp → API Setup."
             value={wa.phoneNumberId}
             onChange={v => setWa(p => ({ ...p, phoneNumberId: v }))}
             placeholder="123456789012345"
           />
           <Field
             label="ACCESS TOKEN"
-            hint="A System User access token with whatsapp_business_messaging permission from Meta Business Manager."
+            hint="A System User access token with whatsapp_business_messaging permission. Generated in Business Manager → System Users."
             value={wa.accessToken}
             onChange={v => setWa(p => ({ ...p, accessToken: v }))}
             secret
@@ -238,15 +391,15 @@ export function CredentialsPage() {
           />
           <Field
             label="WEBHOOK VERIFY TOKEN"
-            hint="A custom string you create. Used to verify webhook callbacks from Meta. Keep it secret."
+            hint="A secret string you choose yourself. You'll enter this same string in your Meta App's webhook configuration to prove ownership."
             value={wa.webhookVerifyToken}
             onChange={v => setWa(p => ({ ...p, webhookVerifyToken: v }))}
             secret
-            placeholder="my_verify_token_123"
+            placeholder="my_secret_verify_token"
           />
           <Field
             label="BUSINESS ACCOUNT ID"
-            hint="Your WhatsApp Business Account (WABA) ID. Found in Meta Business Suite → Business Settings."
+            hint="Your WhatsApp Business Account (WABA) ID. Found in Meta Business Suite → Business Settings → Accounts → WhatsApp Accounts."
             value={wa.businessAccountId}
             onChange={v => setWa(p => ({ ...p, businessAccountId: v }))}
             placeholder="987654321098765"
