@@ -9,7 +9,7 @@ import type { InboxFilter, ChannelType, Conversation } from '../lib/types';
 const FILTERS: { key: InboxFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'messenger', label: 'Messenger' },
-  { key: 'page_comment', label: 'Page Comments' },
+  { key: 'page_comment', label: 'Page' },
   { key: 'whatsapp', label: 'WhatsApp' },
   { key: 'sms', label: 'SMS' },
 ];
@@ -72,23 +72,59 @@ export function InboxPage() {
   const unreadByChannel = (channel: ChannelType) =>
     state.conversations.filter(c => c.channelType === channel && c.unreadCount > 0).length;
 
+  const totalUnreadAll = state.conversations.filter(c => c.unreadCount > 0).length;
+  const isUnreadOnly = state.readFilter === 'unread';
+  const hasSearch = state.searchQuery.trim().length > 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Filter tabs */}
+
+      {/* Search bar */}
       <div style={{
-        display: 'flex', gap: 6, padding: '10px 12px 8px', overflowX: 'auto',
+        padding: '8px 12px 6px', flexShrink: 0,
+        borderBottom: hasSearch ? '1px solid var(--border)' : 'none',
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'var(--surface-2)', borderRadius: 12,
+          padding: '8px 12px', border: '1px solid var(--border)',
+        }}>
+          <span style={{ color: 'var(--slate)', fontSize: 15, flexShrink: 0 }}>🔍</span>
+          <input
+            value={state.searchQuery}
+            onChange={e => dispatch({ type: 'SET_SEARCH', query: e.target.value })}
+            placeholder="Search conversations…"
+            style={{
+              flex: 1, fontSize: 14, color: 'var(--white)',
+              background: 'transparent', border: 'none', outline: 'none',
+            }}
+          />
+          {hasSearch && (
+            <button
+              onClick={() => dispatch({ type: 'SET_SEARCH', query: '' })}
+              style={{ color: 'var(--slate)', fontSize: 16, lineHeight: 1, flexShrink: 0 }}
+            >✕</button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter bar: channel tabs + unread toggle */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '6px 12px 8px', overflowX: 'auto',
         flexShrink: 0, borderBottom: '1px solid var(--border)',
         scrollbarWidth: 'none',
       }}>
+        {/* Channel filter pills */}
         {FILTERS.map(f => {
           const isActive = state.activeFilter === f.key;
-          const count = f.key !== 'all' ? unreadByChannel(f.key as ChannelType) : 0;
+          const count = f.key !== 'all' ? unreadByChannel(f.key as ChannelType) : totalUnreadAll;
           return (
             <button
               key={f.key}
               onClick={() => dispatch({ type: 'SET_FILTER', filter: f.key })}
               style={{
-                padding: '5px 12px', borderRadius: 16, fontSize: 12, fontWeight: 600,
+                padding: '5px 11px', borderRadius: 16, fontSize: 12, fontWeight: 600,
                 whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s',
                 background: isActive ? 'var(--amber)' : 'var(--surface-2)',
                 color: isActive ? 'var(--navy)' : 'var(--slate)',
@@ -108,14 +144,55 @@ export function InboxPage() {
             </button>
           );
         })}
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 18, background: 'var(--border)', flexShrink: 0, marginLeft: 2 }} />
+
+        {/* Unread toggle */}
+        <button
+          onClick={() => dispatch({ type: 'SET_READ_FILTER', filter: isUnreadOnly ? 'all' : 'unread' })}
+          style={{
+            padding: '5px 11px', borderRadius: 16, fontSize: 12, fontWeight: 600,
+            whiteSpace: 'nowrap', flexShrink: 0, transition: 'all 0.15s',
+            background: isUnreadOnly ? 'rgba(245,166,35,0.18)' : 'var(--surface-2)',
+            color: isUnreadOnly ? 'var(--amber)' : 'var(--slate)',
+            border: isUnreadOnly ? '1px solid rgba(245,166,35,0.5)' : '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}
+        >
+          <span style={{ fontSize: 9, lineHeight: 1 }}>●</span>
+          Unread
+          {totalUnreadAll > 0 && (
+            <span style={{
+              background: isUnreadOnly ? 'var(--amber)' : 'rgba(245,166,35,0.25)',
+              color: isUnreadOnly ? 'var(--navy)' : 'var(--amber)',
+              borderRadius: 8, fontSize: 10, fontWeight: 700,
+              padding: '0 5px', minWidth: 16, textAlign: 'center',
+            }}>{totalUnreadAll}</span>
+          )}
+        </button>
       </div>
 
       {/* Conversation list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {filteredConversations.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--slate)' }}>
-            <p style={{ fontSize: 15 }}>No conversations yet</p>
-            <p style={{ fontSize: 13, marginTop: 6 }}>Tap + to start a new conversation</p>
+            {hasSearch ? (
+              <>
+                <p style={{ fontSize: 15 }}>No results for "{state.searchQuery}"</p>
+                <p style={{ fontSize: 13, marginTop: 6 }}>Try a different name or message</p>
+              </>
+            ) : isUnreadOnly ? (
+              <>
+                <p style={{ fontSize: 15 }}>No unread messages</p>
+                <p style={{ fontSize: 13, marginTop: 6 }}>You're all caught up!</p>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 15 }}>No conversations yet</p>
+                <p style={{ fontSize: 13, marginTop: 6 }}>Tap + to start a new conversation</p>
+              </>
+            )}
           </div>
         ) : (
           filteredConversations.map(conv => (
@@ -146,7 +223,7 @@ export function InboxPage() {
                 </div>
                 {conv.unreadCount > 0 && (
                   <div style={{
-                    position: 'absolute', top: -2, right: -2,
+                    position: 'absolute', top: -2, left: -2,
                     width: 10, height: 10, borderRadius: '50%',
                     background: 'var(--amber)', border: '2px solid var(--navy)',
                   }} />

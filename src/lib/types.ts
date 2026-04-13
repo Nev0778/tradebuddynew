@@ -51,6 +51,35 @@ export interface AppSettings {
   tradeType: TradeType;
   autoReply: AutoReplyConfig;
   quickReplies: QuickReplyTemplate[];
+  credentials: ChannelCredentials;
 }
 
 export type InboxFilter = 'all' | 'messenger' | 'page_comment' | 'whatsapp' | 'sms';
+export type ReadFilter = 'all' | 'unread';
+
+// ─── Channel Credentials ─────────────────────────────────────────────────────
+export interface FacebookCredentials {
+  appId: string;
+  appSecret: string;
+  pageAccessToken: string;
+  pageId: string;
+}
+
+export interface WhatsAppCredentials {
+  phoneNumberId: string;
+  accessToken: string;
+  webhookVerifyToken: string;
+  businessAccountId: string;
+}
+
+export interface TwilioCredentials {
+  accountSid: string;
+  authToken: string;
+  phoneNumber: string;
+}
+
+export interface ChannelCredentials {
+  facebook: FacebookCredentials;
+  whatsapp: WhatsAppCredentials;
+  twilio: TwilioCredentials;
+}

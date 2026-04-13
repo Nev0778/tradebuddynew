@@ -7,6 +7,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { BusinessProfilePage } from './pages/BusinessProfilePage';
 import { QuickRepliesPage } from './pages/QuickRepliesPage';
 import { AutoReplyPage } from './pages/AutoReplyPage';
+import { CredentialsPage } from './pages/CredentialsPage';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="settings/business-profile" element={<BusinessProfilePage />} />
             <Route path="settings/quick-replies" element={<QuickRepliesPage />} />
             <Route path="settings/auto-reply" element={<AutoReplyPage />} />
+            <Route path="settings/credentials" element={<CredentialsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

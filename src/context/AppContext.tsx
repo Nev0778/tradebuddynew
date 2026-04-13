@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import type { Conversation, Message, AppSettings, InboxFilter, QuickReplyTemplate } from '../lib/types';
-import { DEMO_CONVERSATIONS, DEFAULT_SETTINGS } from '../lib/demo-data';
+import type { Conversation, Message, AppSettings, InboxFilter, ReadFilter, QuickReplyTemplate } from '../lib/types';
+import { DEMO_CONVERSATIONS, DEFAULT_SETTINGS, DEFAULT_CREDENTIALS } from '../lib/demo-data';
 import { generateId } from '../lib/utils';
 
 const STORAGE_KEY = 'tradebuddy_state_v3';
@@ -9,12 +9,17 @@ interface AppState {
   conversations: Conversation[];
   settings: AppSettings;
   activeFilter: InboxFilter;
+  readFilter: ReadFilter;
+  searchQuery: string;
 }
 
 type Action =
   | { type: 'SEND_MESSAGE'; conversationId: string; text: string }
   | { type: 'MARK_READ'; conversationId: string }
+  | { type: 'MARK_UNREAD'; conversationId: string }
   | { type: 'SET_FILTER'; filter: InboxFilter }
+  | { type: 'SET_READ_FILTER'; filter: ReadFilter }
+  | { type: 'SET_SEARCH'; query: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<AppSettings> }
   | { type: 'ADD_QUICK_REPLY'; template: Omit<QuickReplyTemplate, 'id'> }
   | { type: 'UPDATE_QUICK_REPLY'; template: QuickReplyTemplate }
@@ -26,6 +31,8 @@ const initialState: AppState = {
   conversations: DEMO_CONVERSATIONS,
   settings: DEFAULT_SETTINGS,
   activeFilter: 'all',
+  readFilter: 'all',
+  searchQuery: '',
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -63,8 +70,24 @@ function reducer(state: AppState, action: Action): AppState {
         ),
       };
 
+    case 'MARK_UNREAD':
+      return {
+        ...state,
+        conversations: state.conversations.map(c =>
+          c.id === action.conversationId
+            ? { ...c, unreadCount: 1, messages: c.messages.map((m, i, arr) => i === arr.length - 1 ? { ...m, isRead: false } : m) }
+            : c
+        ),
+      };
+
     case 'SET_FILTER':
       return { ...state, activeFilter: action.filter };
+
+    case 'SET_READ_FILTER':
+      return { ...state, readFilter: action.filter };
+
+    case 'SET_SEARCH':
+      return { ...state, searchQuery: action.query };
 
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.settings } };
@@ -111,6 +134,7 @@ interface AppContextValue {
   dispatch: React.Dispatch<Action>;
   filteredConversations: Conversation[];
   totalUnread: number;
+  totalUnreadCount: number;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -130,7 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           lastMessage: { ...c.lastMessage, timestamp: new Date(c.lastMessage.timestamp) },
           messages: c.messages.map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) })),
         }));
-        dispatch({ type: 'LOAD_STATE', state: { ...parsed, conversations } });
+        // Ensure credentials exist (for users upgrading from older stored state)
+        const settings = {
+          ...DEFAULT_SETTINGS,
+          ...parsed.settings,
+          credentials: { ...DEFAULT_CREDENTIALS, ...(parsed.settings?.credentials ?? {}) },
+        };
+        dispatch({ type: 'LOAD_STATE', state: { ...initialState, ...parsed, conversations, settings } });
       }
     } catch {
       // ignore parse errors, use defaults
@@ -147,14 +177,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   const filteredConversations = state.conversations.filter(c => {
-    if (state.activeFilter === 'all') return true;
-    return c.channelType === state.activeFilter;
+    if (state.activeFilter !== 'all' && c.channelType !== state.activeFilter) return false;
+    if (state.readFilter === 'unread' && c.unreadCount === 0) return false;
+    if (state.searchQuery.trim()) {
+      const q = state.searchQuery.toLowerCase();
+      const matchesName = c.contactName.toLowerCase().includes(q);
+      const matchesMsg = c.lastMessage.text.toLowerCase().includes(q);
+      if (!matchesName && !matchesMsg) return false;
+    }
+    return true;
   }).sort((a, b) => b.lastMessage.timestamp.getTime() - a.lastMessage.timestamp.getTime());
 
   const totalUnread = state.conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const totalUnreadCount = totalUnread;
 
   return (
-    <AppContext.Provider value={{ state, dispatch, filteredConversations, totalUnread }}>
+    <AppContext.Provider value={{ state, dispatch, filteredConversations, totalUnread, totalUnreadCount }}>
       {children}
     </AppContext.Provider>
   );

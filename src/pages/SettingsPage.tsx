@@ -40,6 +40,14 @@ export function SettingsPage() {
   const { state } = useApp();
   const navigate = useNavigate();
 
+  const creds = state.settings.credentials;
+  const connectedCount = [
+    Object.values(creds.facebook).every(v => v.trim()),
+    Object.values(creds.whatsapp).every(v => v.trim()),
+    Object.values(creds.twilio).every(v => v.trim()),
+  ].filter(Boolean).length;
+  const credentialStatus = connectedCount === 0 ? 'Not set' : `${connectedCount}/3 connected`;
+
   return (
     <div style={{ height: '100%', overflowY: 'auto' }}>
       {/* Business card */}
@@ -107,10 +115,13 @@ export function SettingsPage() {
           CHANNELS
         </p>
         <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <SettingsRow icon="💬" label="Facebook Messenger" subtitle="Demo mode — tap to connect" onClick={() => {}} />
-          <SettingsRow icon="📘" label="Facebook Page Comments" subtitle="Demo mode — tap to connect" onClick={() => {}} />
-          <SettingsRow icon="📱" label="WhatsApp Business" subtitle="Demo mode — tap to connect" onClick={() => {}} />
-          <SettingsRow icon="📲" label="SMS (via Twilio)" subtitle="Demo mode — tap to connect" onClick={() => {}} />
+          <SettingsRow
+            icon="🔑"
+            label="API Credentials"
+            subtitle="Facebook, WhatsApp & SMS keys"
+            value={credentialStatus}
+            onClick={() => navigate('/settings/credentials')}
+          />
         </div>
       </div>
 

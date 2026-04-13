@@ -1,4 +1,4 @@
-import type { Conversation, AppSettings } from './types';
+import type { Conversation, AppSettings, ChannelCredentials } from './types';
 
 const now = new Date();
 const mins = (m: number) => new Date(now.getTime() - m * 60 * 1000);
@@ -438,6 +438,12 @@ export const DEMO_CONVERSATIONS: Conversation[] = [
   },
 ];
 
+export const DEFAULT_CREDENTIALS: ChannelCredentials = {
+  facebook: { appId: '', appSecret: '', pageAccessToken: '', pageId: '' },
+  whatsapp: { phoneNumberId: '', accessToken: '', webhookVerifyToken: '', businessAccountId: '' },
+  twilio: { accountSid: '', authToken: '', phoneNumber: '' },
+};
+
 export const DEFAULT_SETTINGS: AppSettings = {
   businessName: "Dave's Electrical Services",
   tradeType: 'electrician',
@@ -486,4 +492,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
       text: "Thanks for the kind words, really appreciate it! If you ever need anything else doing, just give me a shout.",
     },
   ],
+  credentials: DEFAULT_CREDENTIALS,
 };
