@@ -11,7 +11,7 @@ import { AutoReplyPage } from './pages/AutoReplyPage';
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/tradebuddynew">
         <Routes>
           <Route path="/" element={<AppShell />}>
             <Route index element={<Navigate to="/inbox" replace />} />
