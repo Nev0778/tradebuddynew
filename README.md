@@ -1,8 +1,8 @@
-# TradeBuddy
+# SocialsUnited
 
 **Unified messaging for tradespeople** — a Progressive Web App (PWA) built with React + Vite.
 
-TradeBuddy brings Facebook Messenger, Facebook Page Comments, WhatsApp Business, and SMS into a single inbox so tradespeople can see and respond to all customer enquiries from one place.
+SocialsUnited brings Facebook Messenger, Facebook Page Comments, WhatsApp Business, and SMS into a single inbox so tradespeople can see and respond to all customer enquiries from one place.
 
 ## Features
 

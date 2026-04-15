@@ -127,7 +127,7 @@ export function SettingsPage() {
 
       {/* About */}
       <div style={{ margin: '8px 16px 32px', padding: '16px 20px', borderRadius: 14, background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--white)', marginBottom: 4 }}>TradeBuddy</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--white)', marginBottom: 4 }}>SocialsUnited</div>
         <div style={{ fontSize: 12, color: 'var(--slate)', lineHeight: 1.6 }}>
           Version 1.0.0 (Demo)<br />
           Unified messaging for tradespeople<br />

@@ -3,23 +3,23 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: '/tradebuddynew/',
+  base: '/socialsunitednew/',
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'TradeBuddy',
-        short_name: 'TradeBuddy',
+        name: 'SocialsUnited',
+        short_name: 'SocialsUnited',
         description: 'Unified messaging for tradespeople',
         theme_color: '#0B1628',
         background_color: '#0B1628',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/tradebuddynew/',
+        start_url: '/socialsunitednew/',
         icons: [
-          { src: '/tradebuddynew/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: '/tradebuddynew/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/socialsunitednew/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: '/socialsunitednew/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {

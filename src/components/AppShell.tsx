@@ -21,7 +21,7 @@ export function AppShell() {
             fontSize: 16, fontWeight: 700, color: 'var(--navy)',
           }}>T</div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)', lineHeight: 1.2 }}>TradeBuddy</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)', lineHeight: 1.2 }}>SocialsUnited</div>
             <div style={{ fontSize: 11, color: 'var(--slate)', lineHeight: 1.2 }}>{state.settings.businessName}</div>
           </div>
         </div>

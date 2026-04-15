@@ -3,7 +3,7 @@ import type { Conversation, Message, AppSettings, InboxFilter, ReadFilter, Quick
 import { DEMO_CONVERSATIONS, DEFAULT_SETTINGS, DEFAULT_CREDENTIALS } from '../lib/demo-data';
 import { generateId } from '../lib/utils';
 
-const STORAGE_KEY = 'tradebuddy_state_v3';
+const STORAGE_KEY = 'socialsunited_state_v3';
 
 interface AppState {
   conversations: Conversation[];

@@ -174,7 +174,7 @@ const FB_STEPS: Step[] = [
   {
     num: 2,
     title: 'Create a Meta App',
-    detail: 'Click "My Apps" → "Create App". Choose "Business" as the use case. Give it a name (e.g. "TradeBuddy") and link it to your Facebook Business account.',
+    detail: 'Click "My Apps" → "Create App". Choose "Business" as the use case. Give it a name (e.g. "SocialsUnited") and link it to your Facebook Business account.',
     link: 'https://developers.facebook.com/apps/create/',
     linkLabel: 'Create a Meta App',
   },
@@ -207,7 +207,7 @@ const FB_STEPS: Step[] = [
   {
     num: 7,
     title: 'Set up a webhook for incoming messages',
-    detail: 'In Messenger → Settings → Webhooks, enter TradeBuddy\'s webhook URL (provided once the backend is deployed) and subscribe to the "messages" and "messaging_postbacks" fields. Page Comments use the "feed" subscription.',
+    detail: 'In Messenger → Settings → Webhooks, enter SocialsUnited\'s webhook URL (provided once the backend is deployed) and subscribe to the "messages" and "messaging_postbacks" fields. Page Comments use the "feed" subscription.',
     link: 'https://developers.facebook.com/docs/messenger-platform/webhooks',
     linkLabel: 'Messenger Webhooks Docs',
   },
@@ -246,7 +246,7 @@ function FacebookSetupGuide() {
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
             <strong style={{ color: '#1877F2' }}>Cost:</strong> The Facebook Messenger API is free to use.
-            There are no per-message charges from Meta. You only pay for your hosting (TradeBuddy's backend server).
+            There are no per-message charges from Meta. You only pay for your hosting (SocialsUnited's backend server).
           </p>
         </div>
       }
@@ -294,7 +294,7 @@ const WA_STEPS: Step[] = [
   {
     num: 6,
     title: 'Set up a webhook',
-    detail: 'TradeBuddy needs a public webhook URL to receive incoming WhatsApp messages. Once TradeBuddy\'s backend is deployed, paste its webhook URL into your Meta App under WhatsApp → Configuration. Choose a Webhook Verify Token (any secret string you invent) and enter it here too.',
+    detail: 'SocialsUnited needs a public webhook URL to receive incoming WhatsApp messages. Once SocialsUnited\'s backend is deployed, paste its webhook URL into your Meta App under WhatsApp → Configuration. Choose a Webhook Verify Token (any secret string you invent) and enter it here too.',
     link: 'https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks',
     linkLabel: 'Setting up Webhooks',
   },
@@ -375,7 +375,7 @@ const TWILIO_STEPS: Step[] = [
   {
     num: 5,
     title: 'Configure your webhook for incoming SMS',
-    detail: 'In Phone Numbers → Manage → Active Numbers, click your number. Under "Messaging Configuration", set the "A message comes in" webhook URL to TradeBuddy\'s SMS webhook endpoint (provided once the backend is deployed). Set the method to HTTP POST.',
+    detail: 'In Phone Numbers → Manage → Active Numbers, click your number. Under "Messaging Configuration", set the "A message comes in" webhook URL to SocialsUnited\'s SMS webhook endpoint (provided once the backend is deployed). Set the method to HTTP POST.',
     link: 'https://www.twilio.com/docs/sms/tutorials/how-to-receive-and-reply',
     linkLabel: 'Twilio: Receive and Reply to SMS',
   },
@@ -407,7 +407,7 @@ function TwilioSetupGuide() {
           background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--amber)' }}>Note:</strong> Twilio is the recommended SMS provider for TradeBuddy.
+            <strong style={{ color: 'var(--amber)' }}>Note:</strong> Twilio is the recommended SMS provider for SocialsUnited.
             It supports two-way SMS, has excellent UK coverage, and integrates cleanly via a simple REST API.
           </p>
         </div>
@@ -470,7 +470,7 @@ export function CredentialsPage() {
           background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
-            Enter your API credentials below to connect TradeBuddy to your live channels.
+            Enter your API credentials below to connect SocialsUnited to your live channels.
             Each section includes a step-by-step setup guide. All credentials are stored locally on your device.
           </p>
         </div>
