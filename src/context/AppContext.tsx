@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import type { Conversation, Message, AppSettings, InboxFilter, ReadFilter, QuickReplyTemplate } from '../lib/types';
-import { DEMO_CONVERSATIONS, DEFAULT_SETTINGS, DEFAULT_CREDENTIALS } from '../lib/demo-data';
+import { DEFAULT_SETTINGS, DEFAULT_CREDENTIALS } from '../lib/demo-data';
 import { generateId } from '../lib/utils';
+import { conversations as conversationsApi, type ApiConversation } from '../lib/api';
+import { getToken } from '../lib/api';
 
-const STORAGE_KEY = 'socialsunited_state_v3';
+const STORAGE_KEY = 'socialsunited_state_v4';
 
 interface AppState {
   conversations: Conversation[];
@@ -25,20 +27,72 @@ type Action =
   | { type: 'UPDATE_QUICK_REPLY'; template: QuickReplyTemplate }
   | { type: 'DELETE_QUICK_REPLY'; id: string }
   | { type: 'ADD_CONVERSATION'; conversation: Conversation }
+  | { type: 'SET_CONVERSATIONS'; conversations: Conversation[] }
   | { type: 'LOAD_STATE'; state: AppState };
 
+// Always start with empty conversations — demo data is gone
 const initialState: AppState = {
-  conversations: DEMO_CONVERSATIONS,
+  conversations: [],
   settings: DEFAULT_SETTINGS,
   activeFilter: 'all',
   readFilter: 'all',
   searchQuery: '',
 };
 
+// Convert API conversation format to frontend Conversation type
+function apiConvToLocal(c: ApiConversation): Conversation {
+  const lastMsg = c.last_message;
+  const lastMessage: Message = lastMsg
+    ? {
+        id: lastMsg.id,
+        conversationId: c.id,
+        direction: lastMsg.direction,
+        text: lastMsg.text,
+        timestamp: new Date(lastMsg.created_at),
+        channelType: lastMsg.channel_type as Conversation['channelType'],
+        isRead: lastMsg.is_read,
+      }
+    : {
+        id: 'placeholder',
+        conversationId: c.id,
+        direction: 'incoming' as const,
+        text: '',
+        timestamp: new Date(c.created_at),
+        channelType: c.channel_type as Conversation['channelType'],
+        isRead: true,
+      };
+
+  // Generate initials and a stable avatar colour from the contact name
+  const initials = c.contact_name
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+  const avatarColors = ['#E57373', '#64B5F6', '#81C784', '#FFB74D', '#BA68C8', '#4DB6AC'];
+  const avatarColor = avatarColors[c.contact_name.charCodeAt(0) % avatarColors.length];
+
+  return {
+    id: c.id,
+    contactName: c.contact_name,
+    contactInitials: initials,
+    contactAvatarColor: avatarColor,
+    channelType: c.channel_type as Conversation['channelType'],
+    channelId: c.channel_id,
+    pageName: c.page_name,
+    unreadCount: c.unread_count,
+    messages: [lastMessage],
+    lastMessage,
+  };
+}
+
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'LOAD_STATE':
       return action.state;
+
+    case 'SET_CONVERSATIONS':
+      return { ...state, conversations: action.conversations };
 
     case 'SEND_MESSAGE': {
       const newMsg: Message = {
@@ -135,6 +189,7 @@ interface AppContextValue {
   filteredConversations: Conversation[];
   totalUnread: number;
   totalUnreadCount: number;
+  refreshConversations: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -142,39 +197,66 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Load persisted state on mount
+  // Load persisted settings (NOT conversations — those come from the API)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Rehydrate dates
-        const conversations: Conversation[] = (parsed.conversations ?? []).map((c: Conversation) => ({
-          ...c,
-          lastMessage: { ...c.lastMessage, timestamp: new Date(c.lastMessage.timestamp) },
-          messages: c.messages.map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) })),
-        }));
-        // Ensure credentials exist (for users upgrading from older stored state)
         const settings = {
           ...DEFAULT_SETTINGS,
           ...parsed.settings,
           credentials: { ...DEFAULT_CREDENTIALS, ...(parsed.settings?.credentials ?? {}) },
         };
-        dispatch({ type: 'LOAD_STATE', state: { ...initialState, ...parsed, conversations, settings } });
+        dispatch({
+          type: 'LOAD_STATE',
+          state: {
+            ...initialState,
+            settings,
+            activeFilter: parsed.activeFilter ?? 'all',
+            readFilter: parsed.readFilter ?? 'all',
+            searchQuery: '',
+            conversations: [], // always start empty — fetch from API below
+          },
+        });
       }
     } catch {
-      // ignore parse errors, use defaults
+      // ignore parse errors
     }
   }, []);
 
-  // Persist state on change
+  // Fetch real conversations from backend when authenticated
+  const refreshConversations = async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const apiConvs: ApiConversation[] = await conversationsApi.list();
+      const local = apiConvs.map(apiConvToLocal);
+      dispatch({ type: 'SET_CONVERSATIONS', conversations: local });
+    } catch {
+      // silently fail — user sees empty inbox rather than crashing
+    }
+  };
+
+  useEffect(() => {
+    refreshConversations();
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(refreshConversations, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Persist settings only (not conversations — they come from the API)
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        settings: state.settings,
+        activeFilter: state.activeFilter,
+        readFilter: state.readFilter,
+      }));
     } catch {
       // ignore storage errors
     }
-  }, [state]);
+  }, [state.settings, state.activeFilter, state.readFilter]);
 
   const filteredConversations = state.conversations.filter(c => {
     if (state.activeFilter !== 'all' && c.channelType !== state.activeFilter) return false;
@@ -192,7 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const totalUnreadCount = totalUnread;
 
   return (
-    <AppContext.Provider value={{ state, dispatch, filteredConversations, totalUnread, totalUnreadCount }}>
+    <AppContext.Provider value={{ state, dispatch, filteredConversations, totalUnread, totalUnreadCount, refreshConversations }}>
       {children}
     </AppContext.Provider>
   );
