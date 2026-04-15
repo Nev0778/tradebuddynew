@@ -1,10 +1,13 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 export function AppShell() {
   const { totalUnread, state } = useApp();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const isSettings = location.pathname.startsWith('/settings');
+  const displayName = user?.businessName || state.settings.businessName || user?.email || '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--navy)' }}>
@@ -22,17 +25,27 @@ export function AppShell() {
           }}>T</div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--white)', lineHeight: 1.2 }}>SocialsUnited</div>
-            <div style={{ fontSize: 11, color: 'var(--slate)', lineHeight: 1.2 }}>{state.settings.businessName}</div>
+            <div style={{ fontSize: 11, color: 'var(--slate)', lineHeight: 1.2 }}>{displayName}</div>
           </div>
         </div>
-        {totalUnread > 0 && (
-          <div style={{
-            background: 'var(--amber)', color: 'var(--navy)', borderRadius: 12,
-            padding: '2px 8px', fontSize: 12, fontWeight: 700,
-          }}>
-            {totalUnread} unread
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {totalUnread > 0 && (
+            <div style={{
+              background: 'var(--amber)', color: 'var(--navy)', borderRadius: 12,
+              padding: '2px 8px', fontSize: 12, fontWeight: 700,
+            }}>
+              {totalUnread} unread
+            </div>
+          )}
+          <button
+            onClick={() => logout()}
+            title="Sign out"
+            style={{
+              padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+              background: 'var(--surface)', color: 'var(--slate)', border: '1px solid var(--border)',
+            }}
+          >Sign out</button>
+        </div>
       </header>
 
       {/* Main content */}

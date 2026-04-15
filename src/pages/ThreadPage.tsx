@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { conversations as convsApi } from '../lib/api';
 import { ChannelBadge, channelTitle } from '../components/ChannelBadge';
 import { formatMessageTime, rewordProfessional } from '../lib/utils';
 import type { QuickReplyCategory } from '../lib/types';
@@ -18,6 +20,7 @@ const ALL_CATEGORIES: (QuickReplyCategory | 'All')[] = ['All', 'Qualifying', 'Bo
 export function ThreadPage() {
   const { id } = useParams<{ id: string }>();
   const { state, dispatch } = useApp();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const conv = state.conversations.find(c => c.id === id);
 
@@ -54,20 +57,26 @@ export function ThreadPage() {
     return matchCat && matchSearch;
   });
 
-  function handleSend() {
+  async function handleSend() {
     const text = replyText.trim();
     if (!text) return;
-    dispatch({ type: 'SEND_MESSAGE', conversationId: conv!.id, text });
     setReplyText('');
+    dispatch({ type: 'SEND_MESSAGE', conversationId: conv!.id, text });
+    if (isAuthenticated) {
+      try { await convsApi.sendMessage(conv!.id, text); } catch (err) { console.error('Send error:', err); }
+    }
   }
 
-  function handleVoiceSend() {
+  async function handleVoiceSend() {
     const text = voiceText.trim();
     if (!text) return;
-    dispatch({ type: 'SEND_MESSAGE', conversationId: conv!.id, text });
     setVoiceText('');
     setIsReworded(false);
     setShowVoice(false);
+    dispatch({ type: 'SEND_MESSAGE', conversationId: conv!.id, text });
+    if (isAuthenticated) {
+      try { await convsApi.sendMessage(conv!.id, text); } catch (err) { console.error('Send error:', err); }
+    }
   }
 
   function handleReword() {

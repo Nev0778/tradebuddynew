@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { credentials as credsApi } from '../lib/api';
 import type { ChannelCredentials } from '../lib/types';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -432,6 +434,7 @@ function TwilioSetupGuide() {
 
 export function CredentialsPage() {
   const { state, dispatch } = useApp();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const creds = state.settings.credentials;
 
@@ -439,12 +442,38 @@ export function CredentialsPage() {
   const [wa, setWa] = useState({ ...creds.whatsapp });
   const [tw, setTw] = useState({ ...creds.twilio });
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
-  function handleSave() {
+  // Load credentials from backend on mount
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    credsApi.get()
+      .then(data => {
+        setFb(data.facebook);
+        setWa(data.whatsapp);
+        setTw(data.twilio);
+        dispatch({ type: 'UPDATE_SETTINGS', settings: { credentials: data } });
+      })
+      .catch(() => { /* use local state as fallback */ });
+  }, [isAuthenticated, dispatch]);
+
+  async function handleSave() {
     const updated: ChannelCredentials = { facebook: fb, whatsapp: wa, twilio: tw };
-    dispatch({ type: 'UPDATE_SETTINGS', settings: { credentials: updated } });
-    setSaved(true);
-    setTimeout(() => { setSaved(false); navigate('/settings'); }, 1200);
+    setSaving(true);
+    setSaveError('');
+    try {
+      if (isAuthenticated) {
+        await credsApi.save(updated);
+      }
+      dispatch({ type: 'UPDATE_SETTINGS', settings: { credentials: updated } });
+      setSaved(true);
+      setTimeout(() => { setSaved(false); navigate('/settings'); }, 1200);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save credentials');
+    } finally {
+      setSaving(false);
+    }
   }
 
   const anyChanged =
@@ -594,7 +623,8 @@ export function CredentialsPage() {
             transition: 'background 0.2s',
           }}
         >
-          {saved ? '✓ Credentials Saved!' : 'Save Credentials'}
+          {saving ? 'Saving…' : saved ? '✓ Credentials Saved!' : 'Save Credentials'}
+          {saveError && <div style={{ fontSize: 12, color: '#F87171', marginTop: 4 }}>{saveError}</div>}
         </button>
       </div>
     </div>
