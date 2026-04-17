@@ -10,6 +10,7 @@ import { BusinessProfilePage } from './pages/BusinessProfilePage';
 import { QuickRepliesPage } from './pages/QuickRepliesPage';
 import { AutoReplyPage } from './pages/AutoReplyPage';
 import { CredentialsPage } from './pages/CredentialsPage';
+import { FacebookOAuthCallbackPage } from './pages/FacebookOAuthCallbackPage';
 
 function AuthGate() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,6 +49,7 @@ function AuthGate() {
           <Route path="settings/auto-reply" element={<AutoReplyPage />} />
           <Route path="settings/credentials" element={<CredentialsPage />} />
         </Route>
+        <Route path="oauth/facebook" element={<FacebookOAuthCallbackPage />} />
       </Routes>
     </AppProvider>
   );

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { credentials as credsApi } from '../lib/api';
+import { credentials as credsApi, getToken, API_BASE } from '../lib/api';
 import type { ChannelCredentials } from '../lib/types';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
@@ -163,96 +163,126 @@ function SetupGuide({ accentColor, accentBg, accentBorder, label, notice, steps,
   );
 }
 
-// ─── Facebook setup guide ─────────────────────────────────────────────────────
+// ─── Facebook Connect Button ──────────────────────────────────────────────────
 
-const FB_STEPS: Step[] = [
-  {
-    num: 1,
-    title: 'Create a Facebook Developer account',
-    detail: 'Go to developers.facebook.com and log in with your personal Facebook account. Click "Get Started" to register as a developer if you haven\'t already. This is free.',
-    link: 'https://developers.facebook.com',
-    linkLabel: 'developers.facebook.com',
-  },
-  {
-    num: 2,
-    title: 'Create a Meta App',
-    detail: 'Click "My Apps" → "Create App". Choose "Business" as the use case. Give it a name (e.g. "SocialsUnited") and link it to your Facebook Business account.',
-    link: 'https://developers.facebook.com/apps/create/',
-    linkLabel: 'Create a Meta App',
-  },
-  {
-    num: 3,
-    title: 'Add the Messenger product',
-    detail: 'Inside your new app, click "Add Product" and select "Messenger". This enables the Messenger API for your app.',
-    link: 'https://developers.facebook.com/docs/messenger-platform/getting-started/app-setup',
-    linkLabel: 'Messenger Platform: App Setup',
-  },
-  {
-    num: 4,
-    title: 'Connect your Facebook Page',
-    detail: 'In the Messenger settings, under "Access Tokens", click "Add or Remove Pages" and select the Facebook Page you use for your business. This links your Page to the app.',
-    link: null,
-  },
-  {
-    num: 5,
-    title: 'Generate a Page Access Token',
-    detail: 'Once your Page is linked, click "Generate Token" next to it. Copy this token — it is your Page Access Token. For production use, you should exchange this for a long-lived token via the Graph API Explorer.',
-    link: 'https://developers.facebook.com/tools/explorer/',
-    linkLabel: 'Graph API Explorer',
-  },
-  {
-    num: 6,
-    title: 'Find your App ID, App Secret, and Page ID',
-    detail: 'App ID and App Secret are in App Settings → Basic. Your Page ID is found in your Facebook Page Settings → About, or by visiting your Page and looking at the URL (the number in the URL is your Page ID).',
-    link: null,
-  },
-  {
-    num: 7,
-    title: 'Set up a webhook for incoming messages',
-    detail: 'In Messenger → Settings → Webhooks, enter SocialsUnited\'s webhook URL (provided once the backend is deployed) and subscribe to the "messages" and "messaging_postbacks" fields. Page Comments use the "feed" subscription.',
-    link: 'https://developers.facebook.com/docs/messenger-platform/webhooks',
-    linkLabel: 'Messenger Webhooks Docs',
-  },
-  {
-    num: 8,
-    title: 'Submit your app for review (for live use)',
-    detail: 'While in Development Mode, only you and app admins can send messages. To receive messages from any customer, submit your app for Meta App Review and request the "pages_messaging" permission. This is a one-time process.',
-    link: 'https://developers.facebook.com/docs/app-review',
-    linkLabel: 'Meta App Review',
-  },
-];
+interface FacebookConnectProps {
+  onDisconnected: () => void;
+}
 
-function FacebookSetupGuide() {
+function FacebookConnect({ onDisconnected }: FacebookConnectProps) {
+  const [status, setStatus] = useState<{ connected: boolean; pageName: string | null } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const fetchStatus = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/oauth/facebook/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json() as { connected: boolean; pageName: string | null };
+      setStatus(data);
+    } catch {
+      setStatus({ connected: false, pageName: null });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStatus();
+  }, [fetchStatus]);
+
+  function handleConnect() {
+    const token = getToken();
+    if (!token) return;
+    // Open the OAuth flow — backend redirects to Facebook login
+    window.location.href = `${API_BASE}/oauth/facebook/start?token=${encodeURIComponent(token)}`;
+  }
+
+  async function handleDisconnect() {
+    const token = getToken();
+    if (!token) return;
+    setDisconnecting(true);
+    try {
+      await fetch(`${API_BASE}/oauth/facebook/disconnect`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setStatus({ connected: false, pageName: null });
+      onDisconnected();
+    } catch {
+      // ignore
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--slate)', fontSize: 13 }}>
+        Checking connection…
+      </div>
+    );
+  }
+
+  if (status?.connected) {
+    return (
+      <div style={{ padding: '4px 0 12px' }}>
+        <div style={{
+          padding: '12px 14px', borderRadius: 12, marginBottom: 14,
+          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>✅</span>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#22C55E', marginBottom: 2 }}>Connected</p>
+            <p style={{ fontSize: 12, color: 'var(--slate)' }}>
+              Facebook Page: <strong style={{ color: 'var(--white)' }}>{status.pageName ?? 'Your Page'}</strong>
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleDisconnect}
+          disabled={disconnecting}
+          style={{
+            width: '100%', padding: '11px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+            background: 'rgba(239,68,68,0.1)', color: '#F87171',
+            border: '1px solid rgba(239,68,68,0.25)',
+            cursor: disconnecting ? 'not-allowed' : 'pointer',
+            opacity: disconnecting ? 0.6 : 1,
+          }}
+        >
+          {disconnecting ? 'Disconnecting…' : '🔌 Disconnect Facebook Page'}
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <SetupGuide
-      accentColor="#1877F2"
-      accentBg="rgba(24,119,242,0.04)"
-      accentBorder="rgba(24,119,242,0.2)"
-      label="Step-by-step setup guide"
-      notice={
-        <div style={{
-          padding: '10px 12px', borderRadius: 10,
-          background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
-        }}>
-          <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--amber)' }}>Note:</strong> The same Facebook App covers both Messenger and Page Comments.
-            You only need one set of credentials for both channels.
-          </p>
-        </div>
-      }
-      steps={FB_STEPS}
-      footer={
-        <div style={{
-          padding: '10px 12px', borderRadius: 10,
-          background: 'rgba(24,119,242,0.06)', border: '1px solid rgba(24,119,242,0.15)',
-        }}>
-          <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
-            <strong style={{ color: '#1877F2' }}>Cost:</strong> The Facebook Messenger API is free to use.
-            There are no per-message charges from Meta. You only pay for your hosting (SocialsUnited's backend server).
-          </p>
-        </div>
-      }
-    />
+    <div style={{ padding: '4px 0 12px' }}>
+      <div style={{
+        padding: '10px 12px', borderRadius: 10, marginBottom: 16,
+        background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
+      }}>
+        <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
+          Click the button below to log in with Facebook and connect your Business Page.
+          You'll be redirected to Facebook to approve access — no developer account needed.
+        </p>
+      </div>
+      <button
+        onClick={handleConnect}
+        style={{
+          width: '100%', padding: '13px', borderRadius: 12, fontSize: 15, fontWeight: 700,
+          background: '#1877F2', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+        }}
+      >
+        <span style={{ fontSize: 20 }}>📘</span>
+        Connect Facebook Page
+      </button>
+    </div>
   );
 }
 
@@ -269,7 +299,7 @@ const WA_STEPS: Step[] = [
   {
     num: 2,
     title: 'Get a dedicated phone number',
-    detail: 'You need a phone number that is NOT already registered to a personal WhatsApp or WhatsApp Business App account. A new SIM card or a VoIP number (e.g. from Vonage or Twilio) works well. You\'ll receive a verification code on this number.',
+    detail: 'You need a phone number that is NOT already registered to a personal WhatsApp or WhatsApp Business App account. A new SIM card or a VoIP number (e.g. from Vonage or Twilio) works well.',
     link: null,
   },
   {
@@ -282,26 +312,19 @@ const WA_STEPS: Step[] = [
   {
     num: 4,
     title: 'Add a WhatsApp Business Account (WABA) and verify your number',
-    detail: 'Inside your Meta App, go to WhatsApp → Getting Started. Follow the prompts to create or connect a WhatsApp Business Account and add your phone number. Meta will send a verification code to your number.',
+    detail: 'Inside your Meta App, go to WhatsApp → Getting Started. Follow the prompts to create or connect a WhatsApp Business Account and add your phone number.',
     link: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started',
     linkLabel: 'WhatsApp Cloud API: Get Started',
   },
   {
     num: 5,
     title: 'Generate a System User Access Token',
-    detail: 'In Business Manager, go to Settings → System Users. Create a System User, assign it "Admin" access to your WhatsApp Business Account, then generate a token with the whatsapp_business_messaging and whatsapp_business_management permissions.',
+    detail: 'In Business Manager, go to Settings → System Users. Create a System User, assign it "Admin" access to your WhatsApp Business Account, then generate a token with the whatsapp_business_messaging permission.',
     link: 'https://business.facebook.com/settings/system-users',
     linkLabel: 'Business Manager: System Users',
   },
   {
     num: 6,
-    title: 'Set up a webhook',
-    detail: 'SocialsUnited needs a public webhook URL to receive incoming WhatsApp messages. Once SocialsUnited\'s backend is deployed, paste its webhook URL into your Meta App under WhatsApp → Configuration. Choose a Webhook Verify Token (any secret string you invent) and enter it here too.',
-    link: 'https://developers.facebook.com/docs/whatsapp/cloud-api/guides/set-up-webhooks',
-    linkLabel: 'Setting up Webhooks',
-  },
-  {
-    num: 7,
     title: 'Enter your credentials below and save',
     detail: 'Copy your Phone Number ID, Access Token, Webhook Verify Token, and Business Account ID from the Meta Developer dashboard and paste them into the fields below.',
     link: null,
@@ -334,8 +357,6 @@ function WhatsAppSetupGuide() {
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
             <strong style={{ color: '#25D366' }}>Pricing:</strong> Meta charges per conversation (24-hour window), not per message.
-            Business-initiated conversations cost approx. £0.04–£0.07 each.
-            Customer-initiated conversations are free for the first 1,000/month, then approx. £0.02–£0.04 each.
             For most sole-trader tradespeople, the monthly cost is under £5.
           </p>
         </div>
@@ -356,40 +377,26 @@ const TWILIO_STEPS: Step[] = [
   },
   {
     num: 2,
-    title: 'Verify your personal phone number',
-    detail: 'During sign-up, Twilio asks you to verify a personal phone number. This is just for account security — it is not the number your customers will text.',
-    link: null,
-  },
-  {
-    num: 3,
     title: 'Get a Twilio phone number',
-    detail: 'In the Twilio Console, go to Phone Numbers → Manage → Buy a Number. Search for a UK number (+44) with SMS capability. Numbers cost approximately £1/month. This is the number your customers will text.',
+    detail: 'In the Twilio Console, go to Phone Numbers → Manage → Buy a Number. Search for a UK number (+44) with SMS capability. Numbers cost approximately £1/month.',
     link: 'https://console.twilio.com/us1/develop/phone-numbers/manage/search',
     linkLabel: 'Buy a Twilio Number',
   },
   {
-    num: 4,
+    num: 3,
     title: 'Find your Account SID and Auth Token',
-    detail: 'On the Twilio Console homepage, you\'ll see your Account SID and Auth Token. Click the eye icon to reveal the Auth Token. These are your credentials — keep the Auth Token private.',
+    detail: 'On the Twilio Console homepage, you\'ll see your Account SID and Auth Token. Click the eye icon to reveal the Auth Token.',
     link: 'https://console.twilio.com',
     linkLabel: 'Twilio Console',
   },
   {
-    num: 5,
+    num: 4,
     title: 'Configure your webhook for incoming SMS',
-    detail: 'In Phone Numbers → Manage → Active Numbers, click your number. Under "Messaging Configuration", set the "A message comes in" webhook URL to SocialsUnited\'s SMS webhook endpoint (provided once the backend is deployed). Set the method to HTTP POST.',
-    link: 'https://www.twilio.com/docs/sms/tutorials/how-to-receive-and-reply',
-    linkLabel: 'Twilio: Receive and Reply to SMS',
+    detail: 'In Phone Numbers → Manage → Active Numbers, click your number. Under "Messaging Configuration", set the webhook URL to: https://socialsunited-server.onrender.com/webhooks/twilio',
+    link: null,
   },
   {
-    num: 6,
-    title: 'Upgrade from trial (for live use)',
-    detail: 'Twilio trial accounts can only send SMS to verified numbers. To send to any customer, you need to upgrade to a paid account (add a credit card and top up your balance). Twilio charges per SMS sent — approximately £0.04 per outbound message in the UK.',
-    link: 'https://support.twilio.com/hc/en-us/articles/223136107-How-does-Twilio-s-Free-Trial-work-',
-    linkLabel: 'Twilio Trial vs Paid',
-  },
-  {
-    num: 7,
+    num: 5,
     title: 'Enter your credentials below and save',
     detail: 'Paste your Account SID, Auth Token, and Twilio phone number (in +44 format) into the fields below.',
     link: null,
@@ -422,7 +429,6 @@ function TwilioSetupGuide() {
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
             <strong style={{ color: '#F22F46' }}>Pricing:</strong> Twilio charges approximately £0.04 per outbound SMS and £0.01 per inbound SMS in the UK, plus £1/month for the phone number.
-            For a tradesperson receiving and sending ~200 messages/month, the total cost is typically under £10/month.
           </p>
         </div>
       }
@@ -438,7 +444,6 @@ export function CredentialsPage() {
   const navigate = useNavigate();
   const creds = state.settings.credentials;
 
-  const [fb, setFb] = useState({ ...creds.facebook });
   const [wa, setWa] = useState({ ...creds.whatsapp });
   const [tw, setTw] = useState({ ...creds.twilio });
   const [saved, setSaved] = useState(false);
@@ -450,7 +455,6 @@ export function CredentialsPage() {
     if (!isAuthenticated) return;
     credsApi.get()
       .then(data => {
-        setFb(data.facebook);
         setWa(data.whatsapp);
         setTw(data.twilio);
         dispatch({ type: 'UPDATE_SETTINGS', settings: { credentials: data } });
@@ -459,7 +463,12 @@ export function CredentialsPage() {
   }, [isAuthenticated, dispatch]);
 
   async function handleSave() {
-    const updated: ChannelCredentials = { facebook: fb, whatsapp: wa, twilio: tw };
+    // For WhatsApp and Twilio only — Facebook is handled via OAuth
+    const updated: ChannelCredentials = {
+      facebook: creds.facebook, // keep existing facebook creds unchanged
+      whatsapp: wa,
+      twilio: tw,
+    };
     setSaving(true);
     setSaveError('');
     try {
@@ -477,7 +486,6 @@ export function CredentialsPage() {
   }
 
   const anyChanged =
-    JSON.stringify(fb) !== JSON.stringify(creds.facebook) ||
     JSON.stringify(wa) !== JSON.stringify(creds.whatsapp) ||
     JSON.stringify(tw) !== JSON.stringify(creds.twilio);
 
@@ -499,44 +507,28 @@ export function CredentialsPage() {
           background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.2)',
         }}>
           <p style={{ fontSize: 12, color: 'var(--slate-light)', lineHeight: 1.6 }}>
-            Enter your API credentials below to connect SocialsUnited to your live channels.
-            Each section includes a step-by-step setup guide. All credentials are stored locally on your device.
+            Connect your messaging channels below. Facebook connects with one tap — no developer account needed.
           </p>
         </div>
 
         {/* ── Facebook ── */}
         <div style={{ marginBottom: 12, background: 'var(--surface)', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden' }}>
-          <button
-            onClick={() => {}}
-            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', textAlign: 'left', cursor: 'default' }}
-          >
+          <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
             <div style={{
               width: 38, height: 38, borderRadius: 10, background: 'var(--surface-2)',
               border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: 20, flexShrink: 0,
             }}>📘</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--white)', marginBottom: 3 }}>Facebook</div>
-              <div style={{ fontSize: 12, color: 'var(--slate)' }}>Messenger + Page Comments</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--white)', marginBottom: 3 }}>Facebook Messenger</div>
+              <div style={{ fontSize: 12, color: 'var(--slate)' }}>Connect your Facebook Business Page</div>
             </div>
-            <StatusPill connected={isConnected(fb)} />
-          </button>
+          </div>
 
           <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border)' }}>
-            <a
-              href="https://developers.facebook.com/docs/messenger-platform/getting-started/app-setup"
-              target="_blank" rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--amber)', margin: '12px 0 16px', textDecoration: 'none' }}
-            >
-              📖 Facebook Developer Docs ↗
-            </a>
-
-            <FacebookSetupGuide />
-
-            <Field label="APP ID" hint="Found in your Facebook App dashboard under App Settings → Basic." value={fb.appId} onChange={v => setFb(p => ({ ...p, appId: v }))} placeholder="123456789012345" />
-            <Field label="APP SECRET" hint="Found in App Settings → Basic. Keep this private." value={fb.appSecret} onChange={v => setFb(p => ({ ...p, appSecret: v }))} secret placeholder="abc123..." />
-            <Field label="PAGE ACCESS TOKEN" hint="Generate a long-lived Page Access Token via the Graph API Explorer for your Facebook Page." value={fb.pageAccessToken} onChange={v => setFb(p => ({ ...p, pageAccessToken: v }))} secret placeholder="EAABsbCS..." />
-            <Field label="PAGE ID" hint="Your Facebook Page's numeric ID. Found in Page Settings → About." value={fb.pageId} onChange={v => setFb(p => ({ ...p, pageId: v }))} placeholder="123456789" />
+            <FacebookConnect onDisconnected={() => {
+              dispatch({ type: 'UPDATE_SETTINGS', settings: { credentials: { ...creds, facebook: { appId: '', appSecret: '', pageAccessToken: '', pageId: '' } } } });
+            }} />
           </div>
         </div>
 
@@ -611,7 +603,7 @@ export function CredentialsPage() {
           </div>
         </div>
 
-        {/* Save */}
+        {/* Save — only for WhatsApp and Twilio */}
         <button
           onClick={handleSave}
           disabled={!anyChanged && !saved}
@@ -623,7 +615,7 @@ export function CredentialsPage() {
             transition: 'background 0.2s',
           }}
         >
-          {saving ? 'Saving…' : saved ? '✓ Credentials Saved!' : 'Save Credentials'}
+          {saving ? 'Saving…' : saved ? '✓ Credentials Saved!' : 'Save WhatsApp & SMS Credentials'}
           {saveError && <div style={{ fontSize: 12, color: '#F87171', marginTop: 4 }}>{saveError}</div>}
         </button>
       </div>
